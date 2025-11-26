@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-unfold"
-version = "0.39.0"
+version = "0.72.0"
 description = "Modern Django admin theme for seamless interface development"
 license = "MIT"
 readme = "README.md"
@@ -11,11 +11,11 @@ packages = [{ include = "unfold", from = "src" }]
 keywords = ["django", "admin", "tailwind", "theme"]
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
     "Environment :: Web Environment",
     "Intended Audience :: Developers",
@@ -23,21 +23,23 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8"
-django = ">=3.2"
+python = ">=3.10,<4.0"
+django = ">=4.2"
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.3.1"
-pytest-django = "^4.5.2"
-tox = "^4.5.2"
-
+pytest = "^8.4"
+pytest-django = "^4.11"
+pytest-factoryboy = "^2.8"
+tox = "^4.30"
+django-money = "^3.5"
 
 [tool.poetry.group.dev.dependencies]
-python-semantic-release = "^8.7.0"
+python-semantic-release = "^10.4"
 
 [tool.ruff]
 fix = true
 line-length = 88
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -57,20 +59,17 @@ ignore = [
 
 [tool.semantic_release]
 tag_format = "{version}"
-major_on_zero = true
+major_on_zero = false
+allow_zero_version = true
 version_toml = ["pyproject.toml:tool.poetry.version"]
 
 [tool.semantic_release.changelog]
-template_dir = ".github/templates"
+mode = "init"
 exclude_commit_patterns = [
     "chore: version bump",
-    "chore(deps)",
-    "chore(deps-dev)",
+    '''chore(?:\(deps\))?: .+''',
+    '''chore(?:\(deps-dev\))?: .+'''
 ]
-
-[tool.semantic_release.changelog.environment]
-trim_blocks = true
-lstrip_blocks = true
 
 [tool.semantic_release.publish]
 upload_to_vcs_release = false
@@ -89,7 +88,7 @@ legacy_tox_ini = """
     [tox]
     isolated_build = true
     envlist =
-        python{38,39,310,311,312}-django{32,41,42,50,51}
+        python{310,311,312,313,314}-django{42,50,51,52}
 
     [testenv]
     skip_install = true

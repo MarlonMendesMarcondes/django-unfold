@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Any, Optional
+from typing import Any
 
 from django import forms
 from django.contrib.admin.utils import NestedObjects, flatten_fieldsets
@@ -12,10 +12,15 @@ from django.http import HttpRequest
 from django.utils.text import get_text_list
 from django.utils.translation import gettext_lazy as _
 
-from unfold.admin import StackedInline, TabularInline
-
-from .checks import NonrelatedModelAdminChecks
-from .forms import NonrelatedInlineModelFormSet, nonrelated_inline_formset_factory
+from unfold.admin import (
+    StackedInline,
+    TabularInline,
+)
+from unfold.contrib.inlines.checks import NonrelatedModelAdminChecks
+from unfold.contrib.inlines.forms import (
+    NonrelatedInlineModelFormSet,
+    nonrelated_inline_formset_factory,
+)
 
 
 class NonrelatedInlineMixin:
@@ -23,7 +28,7 @@ class NonrelatedInlineMixin:
     formset = NonrelatedInlineModelFormSet
 
     def get_formset(
-        self, request: HttpRequest, obj: Optional[Model] = None, **kwargs: Any
+        self, request: HttpRequest, obj: Model | None = None, **kwargs: Any
     ):
         defaults = self._get_formset_defaults(request, obj, **kwargs)
 
@@ -36,7 +41,7 @@ class NonrelatedInlineMixin:
         )
 
     def _get_formset_defaults(
-        self, request: HttpRequest, obj: Optional[Model] = None, **kwargs: Any
+        self, request: HttpRequest, obj: Model | None = None, **kwargs: Any
     ):
         """Return a BaseInlineFormSet class for use in admin add/change views."""
         if "fields" in kwargs:
@@ -135,8 +140,8 @@ class NonrelatedInlineMixin:
 
 
 class NonrelatedStackedInline(NonrelatedInlineMixin, StackedInline):
-    pass
+    formset = NonrelatedInlineModelFormSet
 
 
 class NonrelatedTabularInline(NonrelatedInlineMixin, TabularInline):
-    pass
+    formset = NonrelatedInlineModelFormSet

@@ -1,7 +1,8 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Union
 
-from .typing import ActionFunction
+from unfold.enums import ActionVariant
+from unfold.typing import ActionFunction
 
 
 @dataclass(frozen=True)
@@ -10,13 +11,31 @@ class UnfoldAction:
     method: ActionFunction
     description: str
     path: str
-    attrs: Optional[Dict] = None
-    object_id: Optional[Union[int, str]] = None
+    attrs: dict | None = None
+    object_id: int | str | None = None
+    icon: str | None = None
+    variant: ActionVariant | None = ActionVariant.DEFAULT
+
+
+@dataclass
+class SearchResult:
+    title: str
+    description: str
+    link: str
+    icon: str | None
 
 
 @dataclass
 class Favicon:
-    href: Union[str, Callable]
-    rel: Optional[str] = None
-    type: Optional[str] = None
-    sizes: Optional[str] = None
+    href: str | Callable
+    rel: str | None = None
+    type: str | None = None
+    sizes: str | None = None
+
+
+@dataclass
+class DropdownItem:
+    title: str
+    link: str | Callable
+    icon: str | None = None
+    attrs: dict | None = None

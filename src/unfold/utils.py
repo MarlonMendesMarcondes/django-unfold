@@ -1,16 +1,26 @@
 import datetime
 import decimal
 import json
-from typing import Any, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import Any
 
+from django.conf import settings
 from django.db import models
+from django.db.models import Model
 from django.template.loader import render_to_string
 from django.utils import formats, timezone
 from django.utils.hashable import make_hashable
 from django.utils.html import format_html
 from django.utils.safestring import SafeText, mark_safe
 
-from .exceptions import UnfoldException
+from unfold.exceptions import UnfoldException
+
+try:
+    from djmoney.models.fields import MoneyField
+    from djmoney.money import Money
+except ImportError:
+    MoneyField = None
+    Money = None
 
 
 def _boolean_icon(field_val: Any) -> str:
@@ -28,6 +38,19 @@ def display_for_header(value: Iterable, empty_value_display: str) -> SafeText:
                 "value": value,
             },
         )
+    )
+
+
+def display_for_dropdown(
+    result: Model, field_name: str, value: Iterable, empty_value_display: str
+) -> SafeText:
+    return render_to_string(
+        "unfold/helpers/display_dropdown.html",
+        {
+            "instance": result,
+            "field_name": field_name,
+            "value": value,
+        },
     )
 
 
@@ -71,11 +94,13 @@ def display_for_value(
         return str(value)
     elif isinstance(value, datetime.datetime):
         return formats.localize(timezone.template_localtime(value))
-    elif isinstance(value, (datetime.date, datetime.time)):
+    elif isinstance(value, datetime.date | datetime.time):
         return formats.localize(value)
-    elif isinstance(value, (int, decimal.Decimal, float)):
+    elif Money is not None and isinstance(value, Money):
+        return str(value)
+    elif isinstance(value, int | decimal.Decimal | float):
         return formats.number_format(value)
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, list | tuple):
         return ", ".join(str(v) for v in value)
     else:
         return str(value)
@@ -96,11 +121,13 @@ def display_for_field(value: Any, field: Any, empty_value_display: str) -> str:
         return empty_value_display
     elif isinstance(field, models.DateTimeField):
         return formats.localize(timezone.template_localtime(value))
-    elif isinstance(field, (models.DateField, models.TimeField)):
+    elif isinstance(field, models.DateField | models.TimeField):
         return formats.localize(value)
+    elif MoneyField is not None and isinstance(field, MoneyField):
+        return str(value)
     elif isinstance(field, models.DecimalField):
         return formats.number_format(value, field.decimal_places)
-    elif isinstance(field, (models.IntegerField, models.FloatField)):
+    elif isinstance(field, models.IntegerField | models.FloatField):
         return formats.number_format(value)
     elif isinstance(field, models.FileField) and value:
         return format_html('<a href="{}">{}</a>', value.url, value)
@@ -113,17 +140,7 @@ def display_for_field(value: Any, field: Any, empty_value_display: str) -> str:
         return display_for_value(value, empty_value_display)
 
 
-def hex_to_rgb(hex_color: str) -> List[int]:
-    hex_color = hex_color.lstrip("#")
-
-    r = int(hex_color[0:2], 16)
-    g = int(hex_color[2:4], 16)
-    b = int(hex_color[4:6], 16)
-
-    return (r, g, b)
-
-
-def prettify_json(data: Any) -> Optional[str]:
+def prettify_json(data: Any, encoder: Any) -> str | None:
     try:
         from pygments import highlight
         from pygments.formatters import HtmlFormatter
@@ -140,9 +157,54 @@ def prettify_json(data: Any) -> Optional[str]:
         )
         return highlight(response, JsonLexer(), formatter)
 
-    response = json.dumps(data, sort_keys=True, indent=4)
+    response = json.dumps(data, sort_keys=True, indent=4, cls=encoder)
 
     return mark_safe(
         f'<div class="block dark:hidden">{format_response(response, "colorful")}</div>'
         f'<div class="hidden dark:block">{format_response(response, "monokai")}</div>'
     )
+
+
+def parse_date_str(value: str) -> datetime.date | None:
+    for format in settings.DATE_INPUT_FORMATS:
+        try:
+            return datetime.datetime.strptime(value, format).date()
+        except (ValueError, TypeError):
+            continue
+
+
+def parse_datetime_str(value: str) -> datetime.datetime | None:
+    for format in settings.DATETIME_INPUT_FORMATS:
+        try:
+            return datetime.datetime.strptime(value, format)
+        except (ValueError, TypeError):
+            continue
+
+
+def hex_to_rgb(hex_color: str) -> list[int]:
+    hex_color = hex_color.lstrip("#")
+
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+
+    return (r, g, b)
+
+
+def hex_to_values(value: str) -> str:
+    return ", ".join(str(item) for item in hex_to_rgb(value))
+
+
+def convert_color(value: str) -> str:
+    if value[0] == "#":
+        return f"rgb({hex_to_values(value)})"
+    elif value.startswith("rgb") or value.startswith("oklch"):
+        return value
+    elif isinstance(value, str) and all(part.isdigit() for part in value.split()):
+        return f"rgb({', '.join(value.split(' '))})"
+    elif isinstance(value, str) and all(
+        part.strip().isdigit() for part in value.split(",")
+    ):
+        return f"rgb({', '.join(part.strip() for part in value.split(','))})"
+
+    return value
